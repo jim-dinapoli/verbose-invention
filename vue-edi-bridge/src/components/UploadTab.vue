@@ -70,10 +70,13 @@ const status = ref('')
 
 const callGrok = async (payload: string): Promise<string> => {
   const apiKey = import.meta.env.VITE_XAI_API_KEY
-  if (!apiKey) throw new Error("Missing XAI key")
+  if (!apiKey) throw new Error("Missing VITE_XAI_API_KEY in .env")
 
-  const response = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",  // ← MUST be POST
+  // YOUR CLOUDFLARE WORKER URL — THIS FIXES CORS FOREVER
+  const PROXY_URL = "https://royal-rain-5021.whateveremailaddress.workers.dev"
+
+  const response = await fetch(PROXY_URL, {
+    method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json"

@@ -3,10 +3,10 @@
     <div class="auth-card">
       <div class="header">
         <h1>Magic EDI Bridge Pro</h1>
-        <p>Upload X12 files → Get perfect JSON instantly</p>
+        <p class="subtitle">Upload X12 files → Get perfect JSON instantly</p>
       </div>
 
-      <!-- LOGIN TAB -->
+      <!-- LOGIN FORM -->
       <div v-if="!showRegister">
         <h2>Log In</h2>
         <form @submit.prevent="handleLogin">
@@ -17,6 +17,7 @@
               placeholder="you@company.com"
               required
               :disabled="loading"
+              autocomplete="email"
             />
           </div>
           <div class="input-group">
@@ -26,6 +27,7 @@
               placeholder="Password"
               required
               :disabled="loading"
+              autocomplete="current-password"
             />
           </div>
 
@@ -42,7 +44,7 @@
         </p>
       </div>
 
-      <!-- REGISTER TAB -->
+      <!-- REGISTER FORM -->
       <div v-else>
         <h2>Create Account</h2>
         <form @submit.prevent="handleRegister">
@@ -90,66 +92,71 @@
       </div>
 
       <!-- Messages -->
-      <div v-if="error" class="error-message">
-        {{ error }}
-      </div>
-      <div v-if="success" class="success-message">
-        {{ success }}
-      </div>
+      <div v-if="error" class="error-message">{{ error }}</div>
+      <div v-if="success" class="success-message">{{ success }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { initializeApp } from 'firebase/app'
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from 'firebase/auth'
 
-const emit = defineEmits<{
-  'login-success': [email: string]
-}>()
+// === FIREBASE CONFIG & INIT ===
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+}
 
+const app = initializeApp(firebaseConfig)
+const auth = getAuth(app)
+
+// === Reactive State ===
 const showRegister = ref(false)
 const loading = ref(false)
 const error = ref('')
 const success = ref('')
 
-// Login fields
+// Login
 const loginEmail = ref('')
 const loginPassword = ref('')
 
-// Register fields
+// Register
 const regEmail = ref('')
 const regPassword = ref('')
 
+// === Login Handler ===
 const handleLogin = async () => {
   loading.value = true
   error.value = ''
   success.value = ''
 
   try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: loginEmail.value,
-        password: loginPassword.value
-      })
-    })
-    if (res.ok) {
-      localStorage.setItem('edi_user', loginEmail.value)
-      success.value = 'Welcome back! Redirecting...'
-      emit('login-success', loginEmail.value)
-      setTimeout(() => location.reload(), 1000)
-    } else {
-      const data = await res.json()
-      error.value = data.error || 'Login failed'
-    }
-  } catch (e) {
-    error.value = 'Network error — try again'
+    await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value)
+    success.value = 'Welcome back! Redirecting...'
+    localStorage.setItem('edi_user', loginEmail.value)
+    setTimeout(() => location.reload(), 1000)
+  } catch (e: any) {
+    error.value = e.code === 'auth/wrong-password' 
+      ? 'Wrong password' 
+      : e.code === 'auth/user-not-found'
+      ? 'No account with this email'
+      : 'Login failed — try again'
   } finally {
     loading.value = false
   }
 }
 
+// === Register Handler ===
 const handleRegister = async () => {
   loading.value = true
   error.value = ''
@@ -161,30 +168,20 @@ const handleRegister = async () => {
     return
   }
 
-  fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: regEmail.value,
-      password: regPassword.value
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.message === "Created!") {
-      success.value = 'Account created! Logging you in...'
-      localStorage.setItem('edi_user', regEmail.value)
-      setTimeout(() => location.reload(), 1500)
-    } else {
-      error.value = data.error || 'Registration failed'
-    }
-  })
-  .catch(() => {
-    error.value = 'Network error'
-  })
-  .finally(() => {
+  try {
+    await createUserWithEmailAndPassword(auth, regEmail.value, regPassword.value)
+    success.value = 'Account created! Welcome!'
+    localStorage.setItem('edi_user', regEmail.value)
+    setTimeout(() => location.reload(), 1500)
+  } catch (e: any) {
+    error.value = e.code === 'auth/email-already-in-use'
+      ? 'Email already registered'
+      : e.code === 'auth/weak-password'
+      ? 'Password too weak'
+      : 'Registration failed'
+  } finally {
     loading.value = false
-  })
+  }
 }
 </script>
 
@@ -206,7 +203,7 @@ const handleRegister = async () => {
   width: 100%;
   max-width: 440px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-  border: 1px solid rgba(100, 100, 255, 0.3);
+  border: 1px solid rgba(100,100,255,0.3);
   text-align: center;
 }
 
@@ -219,7 +216,7 @@ const handleRegister = async () => {
   margin: 0 0 8px 0;
 }
 
-.header p {
+.subtitle {
   color: #aaa;
   font-size: 1.1rem;
   margin-bottom: 30px;
@@ -288,6 +285,7 @@ input:focus {
   color: #00d4ff;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .link:hover {
@@ -302,7 +300,7 @@ input:focus {
   margin-top: 15px;
 }
 
-.success {
+.success-message {
   background: #003300;
   color: #00ffaa;
   padding: 12px;
