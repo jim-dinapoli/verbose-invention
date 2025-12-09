@@ -6,7 +6,7 @@
         <p>Upload X12 files → Get perfect JSON instantly</p>
       </div>
 
-      <!-- LOGIN -->
+      <!-- LOGIN FORM -->
       <div v-if="!showRegister">
         <h2>Log In</h2>
         <form @submit.prevent="handleLogin">
@@ -18,11 +18,11 @@
         </form>
         <p class="switch">
           No account? 
-          <router-link to="/register" class="link">Register here</router-link>
+          <a href="#" @click.prevent="showRegister = true" class="link">Register here</a>
         </p>
       </div>
 
-      <!-- REGISTER -->
+      <!-- REGISTER FORM -->
       <div v-else>
         <h2>Create Account</h2>
         <form @submit.prevent="handleRegister">
@@ -34,7 +34,7 @@
         </form>
         <p class="switch">
           Have an account? 
-          <router-link to="/login" class="link">Log in</router-link>
+          <a href="#" @click.prevent="showRegister = false" class="link">Log in</a>
         </p>
       </div>
 
@@ -51,7 +51,9 @@ import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
 
+// Auto-show register if URL is /register
 const showRegister = ref(route.path === '/register')
+
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -63,14 +65,12 @@ const handleLogin = async () => {
   error.value = ''
   success.value = ''
 
-  // Mock login
+  // Mock login — replace with Firebase later
   await new Promise(resolve => setTimeout(resolve, 800))
 
   if (email.value && password.value.length >= 6) {
     localStorage.setItem('edi_user', email.value)
     success.value = 'Welcome back!'
-    
-    // INSTANT SPA navigation — no reload!
     router.push('/dashboard')
   } else {
     error.value = 'Invalid email or password'
@@ -91,9 +91,7 @@ const handleRegister = async () => {
 
   await new Promise(resolve => setTimeout(resolve, 800))
   localStorage.setItem('edi_user', email.value)
-  success.value = 'Account created!'
-
-  // INSTANT SPA navigation
+  success.value = 'Account created! Welcome!'
   router.push('/dashboard')
 }
 </script>
@@ -176,6 +174,12 @@ button:hover {
 .link {
   color: #00d4ff;
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
 }
 
 .error {
