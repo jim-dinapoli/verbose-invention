@@ -47,6 +47,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebaseConfig'; // Adjust path as needed
 
 const router = useRouter()
 const route = useRoute()
@@ -65,15 +67,20 @@ const handleLogin = async () => {
   error.value = ''
   success.value = ''
 
-  // Mock login — replace with Firebase later
-  await new Promise(resolve => setTimeout(resolve, 800))
+  if (password.value.length < 6) {
+    error.value = 'Password must be 6+ characters'
+    loading.value = false
+    return
+  } 
 
-  if (email.value && password.value.length >= 6) {
+  try {
+    await signInWithEmailAndPassword(auth, email.value, password.value)
     localStorage.setItem('edi_user', email.value)
     success.value = 'Welcome back!'
+    loading.value = false
     router.push('/dashboard')
-  } else {
-    error.value = 'Invalid email or password'
+  } catch (e) {
+    error.value = 'Login failed. Try again.'
   }
   loading.value = false
 }
@@ -87,12 +94,19 @@ const handleRegister = async () => {
     error.value = 'Password must be 6+ characters'
     loading.value = false
     return
-  }
+  } 
 
-  await new Promise(resolve => setTimeout(resolve, 800))
-  localStorage.setItem('edi_user', email.value)
-  success.value = 'Account created! Welcome!'
-  router.push('/dashboard')
+  try {
+    await createUserWithEmailAndPassword(auth, email.value, password.value);
+    localStorage.setItem('edi_user', email.value)
+    success.value = 'Account created! Welcome!'
+    loading.value = false
+    router.push('/dashboard')
+  }
+  catch (e) {
+    error.value = 'Registration failed. Try again.'
+    loading.value = false
+  }    
 }
 </script>
 
